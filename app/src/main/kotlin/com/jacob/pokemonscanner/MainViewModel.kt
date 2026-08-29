@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jacob.pokemonscanner.automation.GiftAutomationCoordinator
+import com.jacob.pokemonscanner.image.CalibrationProfileStore
 import com.jacob.pokemonscanner.image.GiftScreenAnalyzer
 import com.jacob.pokemonscanner.model.GiftAssistantSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +19,13 @@ class MainViewModel @Inject constructor(
     @ApplicationContext context: Context,
 ) : ViewModel() {
     private val preferences = GiftPreferencesRepository(context)
-    private val coordinator = GiftAutomationCoordinator(GiftScreenAnalyzer())
+    private val matchingProfile = CalibrationProfileStore(context.filesDir.resolve("calibration"))
+        .listProfiles()
+        .firstOrNull {
+            it.widthPixels == context.resources.displayMetrics.widthPixels &&
+                it.heightPixels == context.resources.displayMetrics.heightPixels
+        }
+    private val coordinator = GiftAutomationCoordinator(GiftScreenAnalyzer(matchingProfile))
 
     val workflow = coordinator.state
     val liveLog = coordinator.log
@@ -39,7 +46,7 @@ class MainViewModel @Inject constructor(
     )
 
     init {
-        AutomationControlBridge.bind(::pause, ::stop)
+        AutomationControlBridge.bind(::pause, ::stop, ::captureLost)
     }
 
     fun start() = coordinator.start(viewModelScope, settings.value, preferences::appendLog)
