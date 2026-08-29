@@ -48,14 +48,16 @@ class GiftScreenAnalyzer(
             targets = targets,
             eligibleFriends = friends,
             cleanupCandidates = cleanup,
-            pageFingerprint = if (classification.screen == GameScreen.FRIENDS_LIST) PerceptualHash.dHash(frame) else null,
+            pageFingerprint = if (classification.screen in setOf(GameScreen.FRIENDS_LIST, GameScreen.ITEM_BAG)) PerceptualHash.dHash(frame) else null,
             detectedSortMode = sortMode,
             detectedSortDirection = sortDirection,
             hasReceivedGift = if (classification.screen == GameScreen.FRIEND_DETAIL) {
                 targets.containsKey(AutomationAction.OPEN_RECEIVED_GIFT).takeIf { it }
             } else null,
             canSendGift = if (classification.screen == GameScreen.FRIEND_DETAIL) detectSendGiftEnabled(frame, recognized) else null,
-            hasGiftToSend = if (classification.screen == GameScreen.GIFT_PICKER) targets.containsKey(AutomationAction.SELECT_GIFT) else null,
+            hasGiftToSend = if (classification.screen == GameScreen.GIFT_PICKER) {
+                detectGiftAvailable(frame).takeIf { it }
+            } else null,
             confirmedItem = confirmedItem,
             // Quantities deliberately remain unverified until a discard-dialog fixture is calibrated.
             selectedQuantity = null,
@@ -96,9 +98,6 @@ class GiftScreenAnalyzer(
             )
             GameScreen.TRAINER_PROFILE -> {
                 fromText(AutomationAction.OPEN_FRIENDS, "FRIENDS", "Friends tab")
-                if (AutomationAction.OPEN_FRIENDS !in targets) {
-                    fixed(AutomationAction.OPEN_FRIENDS, NormalizedRect(.35f, .035f, .65f, .13f), "Friends tab", .82f)
-                }
             }
             GameScreen.FRIENDS_LIST -> fixed(
                 AutomationAction.OPEN_SORT,
@@ -128,31 +127,22 @@ class GiftScreenAnalyzer(
             GameScreen.FRIEND_DETAIL -> {
                 fromText(AutomationAction.SEND_GIFT, "SEND GIFT", "Send Gift")
                 fixed(AutomationAction.BACK, NormalizedRect(.39f, .88f, .61f, .99f), "Close friend detail", .90f)
-                findTextBounds(text, "OPEN")?.let {
-                    targets[AutomationAction.OPEN_RECEIVED_GIFT] = RecognitionTarget(
-                        it.normalized(bitmap), .94f, RecognitionSource.OCR, "Open received gift",
-                    )
-                }
             }
-            GameScreen.GIFT_PICKER -> fixed(
-                AutomationAction.SELECT_GIFT,
-                NormalizedRect(.03f, .18f, .48f, .49f),
-                "First available gift",
-                .90f,
-            )
+            GameScreen.GIFT_PICKER -> if (detectGiftAvailable(bitmap)) {
+                fixed(
+                    AutomationAction.SELECT_GIFT,
+                    NormalizedRect(.03f, .18f, .48f, .49f),
+                    "First available gift",
+                    .90f,
+                )
+            }
             GameScreen.GIFT_COMPOSE -> fromText(AutomationAction.CONFIRM_SEND, "SEND", "Send selected gift")
             GameScreen.FRIENDSHIP_MESSAGE,
             GameScreen.POSTCARD_PROMPT,
             GameScreen.STICKER_PICKER,
-            -> fixed(
-                AutomationAction.DISMISS_KNOWN_DIALOG,
-                NormalizedRect(.30f, .80f, .70f, .96f),
-                "Recognized dialog continue control",
-                .82f,
-            )
+            -> Unit // Safety gate: these target layouts still need supplied fixtures or accessible nodes.
             GameScreen.BAG_FULL_DIALOG -> {
                 fromText(AutomationAction.OPEN_ITEM_BAG, "MANAGE ITEMS", "Manage items")
-                fromText(AutomationAction.OPEN_ITEM_BAG, "ITEM BAG", "Open Item Bag")
             }
             GameScreen.DISCARD_CONFIRMATION -> {
                 fromText(AutomationAction.CONFIRM_DISCARD, "DISCARD", "Confirm discard")
@@ -180,9 +170,13 @@ class GiftScreenAnalyzer(
             } finally {
                 crop.recycle()
             }
-            val hashMaterial = "${row.top}:${row.bottom}:$cropHash"
+            val giftPhrase = Regex("sent you a gift", RegexOption.IGNORE_CASE).find(normalized)
+            val transientNameCue = normalized
+                .substring(0, giftPhrase?.range?.first ?: normalized.length)
+                .trim()
+                .lowercase()
             val fingerprint = MessageDigest.getInstance("SHA-256")
-                .digest(hashMaterial.toByteArray())
+                .digest("$transientNameCue:$cropHash".toByteArray())
                 .joinToString("") { "%02x".format(it) }
             RecognizedFriendCandidate(
                 sessionFingerprint = fingerprint,
@@ -262,6 +256,22 @@ class GiftScreenAnalyzer(
             ratio < .025f -> false
             else -> null
         }
+    }
+
+    private fun detectGiftAvailable(bitmap: Bitmap): Boolean {
+        val hsv = FloatArray(3)
+        var giftColors = 0
+        var samples = 0
+        for (y in (bitmap.height * .14f).toInt() until (bitmap.height * .52f).toInt() step 5) {
+            for (x in 0 until bitmap.width step 5) {
+                Color.colorToHSV(bitmap.getPixel(x, y), hsv)
+                val magentaRibbon = hsv[0] in 305f..350f && hsv[1] > .45f && hsv[2] > .55f
+                val yellowBag = hsv[0] in 38f..68f && hsv[1] > .45f && hsv[2] > .58f
+                if (magentaRibbon || yellowBag) giftColors++
+                samples++
+            }
+        }
+        return samples > 0 && giftColors > samples * .006f
     }
 
     private fun looksLikeHomeMap(bitmap: Bitmap): Boolean {

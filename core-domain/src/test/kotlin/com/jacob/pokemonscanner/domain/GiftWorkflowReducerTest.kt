@@ -83,7 +83,9 @@ class GiftWorkflowReducerTest {
         decision = observe(decision.snapshot, GameScreen.GIFT_COMPOSE, targets = mapOf(AutomationAction.CONFIRM_SEND to genericTarget))
         decision = GiftWorkflowReducer.reduce(
             decision.snapshot,
-            GiftWorkflowEvent.ScreenRecognized(ScreenObservation(GameScreen.FRIEND_DETAIL, .98f, RecognitionSource.OCR)),
+            GiftWorkflowEvent.ScreenRecognized(ScreenObservation(
+                GameScreen.FRIEND_DETAIL, .98f, RecognitionSource.OCR, canSendGift = false,
+            )),
             settings,
         )
         assertEquals(1, decision.snapshot.giftsSent)
@@ -161,6 +163,50 @@ class GiftWorkflowReducerTest {
             GameScreen.SYSTEM_DIALOG,
         )
         assertEquals(GiftAutomationState.PAUSED, dialog.snapshot.state)
+    }
+
+    @Test fun recoveryResumesTheInterruptedStateWhenAnimationSettles() {
+        val opening = GiftWorkflowSnapshot(state = GiftAutomationState.OPENING_GIFT)
+        val low = GiftWorkflowReducer.reduce(
+            opening,
+            GiftWorkflowEvent.ScreenRecognized(ScreenObservation(GameScreen.UNKNOWN, .2f, RecognitionSource.OCR)),
+            settings,
+        )
+        assertEquals(GiftAutomationState.RECOVERING, low.snapshot.state)
+        val settled = observe(
+            low.snapshot,
+            GameScreen.GIFT_RESULTS,
+            targets = mapOf(AutomationAction.DISMISS_GIFT_RESULTS to genericTarget),
+        )
+        assertEquals(GiftAutomationState.HANDLING_GIFT_RESULTS, settled.snapshot.state)
+        assertEquals(1, settled.snapshot.giftsOpened)
+    }
+
+    @Test fun itemCleanupScansAVisiblePageBeforeDeclaringItComplete() {
+        val cleaning = GiftWorkflowSnapshot(state = GiftAutomationState.CLEANING_ITEMS)
+        val first = GiftWorkflowReducer.reduce(
+            cleaning,
+            GiftWorkflowEvent.ScreenRecognized(ScreenObservation(
+                GameScreen.ITEM_BAG,
+                .98f,
+                RecognitionSource.OCR,
+                pageFingerprint = "item-page",
+            )),
+            settings,
+        )
+        assertEquals(AutomationAction.SCROLL_ITEMS, first.instruction?.action)
+        val repeated = GiftWorkflowReducer.reduce(
+            first.snapshot,
+            GiftWorkflowEvent.ScreenRecognized(ScreenObservation(
+                GameScreen.ITEM_BAG,
+                .98f,
+                RecognitionSource.OCR,
+                pageFingerprint = "item-page",
+            )),
+            settings,
+        )
+        assertEquals(GiftAutomationState.RETURNING_TO_FRIENDS, repeated.snapshot.state)
+        assertEquals(AutomationAction.BACK, repeated.instruction?.action)
     }
 
     @Test fun fakeRecognitionAndGesturePortsSupportOfflineWorkflowTests() = runBlocking {

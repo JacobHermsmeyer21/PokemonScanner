@@ -272,7 +272,7 @@ private fun RunScreen(
                     }
                     Button(
                         onClick = onStart,
-                        enabled = runAccepted && accessibilityConnected && !running,
+                        enabled = runAccepted && accessibilityConnected && notificationGranted && !running,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp).semantics {
                             contentDescription = if (settings.dryRun) "Start guided dry run" else "Start gift assistant"
                         },

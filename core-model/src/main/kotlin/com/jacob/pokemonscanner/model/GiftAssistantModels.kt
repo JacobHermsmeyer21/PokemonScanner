@@ -147,6 +147,7 @@ enum class AutomationAction {
     BACK,
     OPEN_ITEM_BAG,
     OPEN_DISCARD,
+    SCROLL_ITEMS,
     SELECT_ALL_QUANTITY,
     CONFIRM_DISCARD,
 }
@@ -226,6 +227,7 @@ data class GiftWorkflowSnapshot(
     val processedFriendFingerprints: Set<String> = emptySet(),
     val currentFriendFingerprint: String? = null,
     val scannedEmptyPages: Set<String> = emptySet(),
+    val scannedCleanupPages: Set<String> = emptySet(),
     val currentScreen: GameScreen = GameScreen.UNKNOWN,
     val recognitionConfidence: Float = 0f,
     val recognitionSource: RecognitionSource? = null,

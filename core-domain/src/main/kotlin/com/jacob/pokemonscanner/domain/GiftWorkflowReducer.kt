@@ -21,6 +21,7 @@ object GiftWorkflowReducer {
                 processedFriendFingerprints = emptySet(),
                 currentFriendFingerprint = null,
                 scannedEmptyPages = emptySet(),
+                scannedCleanupPages = emptySet(),
                 retryCount = 0,
                 sortVerified = false,
                 giftCountedForCurrentFriend = false,
@@ -142,7 +143,7 @@ object GiftWorkflowReducer {
 
             GiftAutomationState.HOME_SCREEN,
             GiftAutomationState.RECOVERING,
-            -> recoverFromKnownScreen(observed, observation)
+            -> recoverFromKnownScreen(observed, observation, settings)
 
             GiftAutomationState.OPENING_PROFILE -> when (observation.screen) {
                 GameScreen.TRAINER_PROFILE -> instruct(
@@ -356,8 +357,16 @@ object GiftWorkflowReducer {
         }
         GameScreen.GIFT_COMPOSE -> instruct(state, AutomationAction.CONFIRM_SEND, observation, "Sending the selected gift")
         GameScreen.FRIEND_DETAIL -> {
-            val sent = if (state.lastAction == AutomationAction.CONFIRM_SEND) state.copy(giftsSent = state.giftsSent + 1) else state
-            returnToListDecision(sent, observation, "Gift flow complete")
+            when {
+                state.lastAction != AutomationAction.CONFIRM_SEND -> unsafeScreen(state, "Gift send completion was not verified")
+                observation.canSendGift == false -> returnToListDecision(
+                    state.copy(giftsSent = state.giftsSent + 1),
+                    observation,
+                    "Gift send verified",
+                )
+                observation.canSendGift == true -> unsafeScreen(state, "Send Gift is still enabled; a successful send was not verified")
+                else -> unsafeScreen(state, "Gift send result could not be verified")
+            }
         }
         else -> unsafeScreen(state, "Gift sending flow changed unexpectedly")
     }
@@ -409,12 +418,22 @@ object GiftWorkflowReducer {
                 it.item.mayEverBeDiscarded && it.item in settings.cleanupItems
             }
             if (candidate == null) {
-                instruct(
-                    updated.copy(state = GiftAutomationState.RETURNING_TO_FRIENDS),
-                    AutomationAction.BACK,
-                    observation,
-                    "Cleanup complete; returning to Friends",
-                )
+                val page = observation.pageFingerprint
+                if (page != null && page !in updated.scannedCleanupPages) {
+                    instruct(
+                        updated.copy(scannedCleanupPages = updated.scannedCleanupPages + page),
+                        AutomationAction.SCROLL_ITEMS,
+                        observation,
+                        "Checking the next Item Bag page",
+                    )
+                } else {
+                    instruct(
+                        updated.copy(state = GiftAutomationState.RETURNING_TO_FRIENDS),
+                        AutomationAction.BACK,
+                        observation,
+                        "Cleanup complete; returning to Friends",
+                    )
+                }
             } else {
                 instruct(
                     updated.copy(pendingDiscardItem = candidate.item),
@@ -476,12 +495,23 @@ object GiftWorkflowReducer {
     private fun recoverFromKnownScreen(
         state: GiftWorkflowSnapshot,
         observation: ScreenObservation,
-    ): WorkflowDecision = when (observation.screen) {
+        settings: GiftAssistantSettings,
+    ): WorkflowDecision {
+        val resume = state.resumeState
+        if (resume != null && resume !in setOf(GiftAutomationState.RECOVERING, GiftAutomationState.ERROR, GiftAutomationState.PAUSED)) {
+            return onObservation(
+                state.copy(state = resume, resumeState = null),
+                observation,
+                settings,
+            )
+        }
+        return when (observation.screen) {
         GameScreen.HOME_MAP -> instruct(state.copy(state = GiftAutomationState.OPENING_PROFILE), AutomationAction.OPEN_PROFILE, observation, "Recovering from the map")
         GameScreen.TRAINER_PROFILE -> instruct(state.copy(state = GiftAutomationState.OPENING_FRIENDS), AutomationAction.OPEN_FRIENDS, observation, "Recovering from Trainer profile")
         GameScreen.FRIENDS_LIST -> instruct(state.copy(state = GiftAutomationState.APPLYING_SORT, sortVerified = false), AutomationAction.OPEN_SORT, observation, "Restoring friend sort")
         GameScreen.FRIEND_DETAIL -> returnToListDecision(state, observation, "Recovering to Friends")
         else -> unsafeScreen(state, "No safe recovery route is known for this screen")
+        }
     }
 
     private fun returnToListDecision(
@@ -538,7 +568,7 @@ object GiftWorkflowReducer {
         return if (attempts <= settings.retryLimit) {
             WorkflowDecision(state.copy(
                 state = GiftAutomationState.RECOVERING,
-                resumeState = state.state,
+                resumeState = state.resumeState ?: state.state.takeUnless { it == GiftAutomationState.RECOVERING },
                 retryCount = attempts,
                 currentAction = "$message. Rechecking ($attempts/${settings.retryLimit})",
                 errorMessage = message,

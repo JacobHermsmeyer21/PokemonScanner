@@ -7,6 +7,9 @@
     <application
         android:name=".ScannerApplication"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:icon="@drawable/ic_gift_access"
         android:label="Gift Access Assistant"
         android:supportsRtl="true"
         android:theme="@style/Theme.PokemonScanner">

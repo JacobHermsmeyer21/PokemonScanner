@@ -18,6 +18,7 @@ import androidx.core.content.getSystemService
 import com.jacob.pokemonscanner.automation.AutomationServiceBridge
 import com.jacob.pokemonscanner.capture.CaptureStatus
 import com.jacob.pokemonscanner.capture.ScreenCaptureService
+import com.jacob.pokemonscanner.model.GiftAutomationState
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -49,6 +50,12 @@ class MainActivity : ComponentActivity() {
             val liveLog by viewModel.liveLog.collectAsState()
             val captureActive by CaptureStatus.active.collectAsState()
             val accessibilityConnected by AutomationServiceBridge.connected.collectAsState()
+
+            LaunchedEffect(workflow.state, captureActive) {
+                if (workflow.state == GiftAutomationState.COMPLETED && captureActive) {
+                    ScreenCaptureService.finishCompletedRun(this@MainActivity)
+                }
+            }
 
             GiftAssistantTheme {
                 GiftAssistantApp(

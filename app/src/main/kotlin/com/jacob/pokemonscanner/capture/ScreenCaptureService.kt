@@ -35,6 +35,7 @@ class ScreenCaptureService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_PAUSE -> AutomationControlBridge.pause()
+            ACTION_FINISH -> stopCapture(notifyAutomation = false)
             ACTION_STOP -> {
                 AutomationControlBridge.stop()
                 stopCapture(notifyAutomation = false)
@@ -60,7 +61,10 @@ class ScreenCaptureService : Service() {
         val mediaProjection = manager.getMediaProjection(resultCode, resultData)
         projection = mediaProjection
         mediaProjection.registerCallback(object : MediaProjection.Callback() {
-            override fun onStop() { stopCapture(notifyAutomation = true) }
+            override fun onStop() {
+                // An intentional stop clears projection before MediaProjection dispatches this callback.
+                if (projection != null) stopCapture(notifyAutomation = true)
+            }
         }, null)
 
         val metrics = resources.displayMetrics
@@ -160,6 +164,7 @@ class ScreenCaptureService : Service() {
         private const val FRAME_INTERVAL_MS = 180L
         private const val ACTION_START = "capture.start"
         private const val ACTION_PAUSE = "capture.pause"
+        private const val ACTION_FINISH = "capture.finish"
         private const val ACTION_STOP = "capture.stop"
         private const val EXTRA_RESULT_CODE = "result.code"
         private const val EXTRA_RESULT_DATA = "result.data"
@@ -174,6 +179,10 @@ class ScreenCaptureService : Service() {
 
         fun stop(context: Context) {
             context.startService(Intent(context, ScreenCaptureService::class.java).setAction(ACTION_STOP))
+        }
+
+        fun finishCompletedRun(context: Context) {
+            context.startService(Intent(context, ScreenCaptureService::class.java).setAction(ACTION_FINISH))
         }
     }
 }

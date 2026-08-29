@@ -1,0 +1,216 @@
+Act as a senior Android engineer and accessibility-focused product designer. Build a complete Android app that assists people with disabilities in managing gifts in Pokémon GO.
+
+Before implementation, inspect the existing repository and identify the current architecture, build system, Android SDK versions, and any relevant existing code. Use Kotlin, Jetpack Compose, Material 3, and a maintainable architecture unless the repository already establishes another suitable standard.
+
+You are explicitly allowed—and encouraged—to ask me for any resources needed to implement this reliably, including:
+
+- Screenshots or screen recordings of every relevant Pokémon GO screen
+- Device resolution, display density, orientation, and font/display scaling
+- Android version and device model
+- Pokémon GO version and language
+- Locations of buttons and list rows
+- Examples of dialogs, errors, loading screens, animations, and disabled states
+- Existing icons, branding, colors, or design references
+- Clarification about ambiguous behavior
+- Permission to install dependencies or run builds and tests
+
+Do not guess when missing visual information would make the automation unreliable. Ask for the necessary resources, explain exactly what screen or state is needed, and then continue with everything that can be completed meanwhile.
+
+PRODUCT GOAL
+
+Create an Android accessibility assistant that performs the following workflow after the user explicitly presses Start:
+
+1. Confirm that Pokémon GO is open and currently on its main map/home screen.
+2. Navigate to the Trainer/Profile screen and then to the Friends screen.
+3. Sort the friend list according to a setting chosen by the user:
+   - Gift status
+   - Friendship level
+4. Allow the user to configure ascending or descending order when applicable.
+5. Select the first eligible friend shown at the top of the sorted list.
+6. Open that friend’s received gift when one is available.
+7. Handle the complete gift-opening flow, including animations, confirmation buttons, friendship-level messages, postcards, stickers, and other dialogs that might appear.
+8. After opening the gift, send a gift back if:
+   - The friend is eligible to receive one
+   - The user has a gift available
+   - Pokémon GO has not reached its gift-sending limit
+9. Return to the friend list and continue with the next eligible friend.
+10. Do not repeatedly process the same friend during one run.
+11. Continue until one of these conditions occurs:
+   - The gift-sending limit is reached
+   - The gift-opening limit is reached
+   - No more eligible friends are available
+   - No gifts remain to send
+   - The user presses Stop
+   - A timeout or unrecognized screen makes safe continuation impossible
+12. If the item bag becomes full while opening gifts:
+   - Navigate safely to the Item Bag.
+   - Discard all quantities of these item types:
+     - Potion
+     - Super Potion
+     - Hyper Potion
+     - Revive
+     - Razz Berry, but never Golden Razz Berry
+     - Nanab Berry
+   - Never discard Max Potions, Max Revives, Golden Razz Berries, Silver Pinap Berries, or any item that was not explicitly selected in the app’s settings.
+   - Make the cleanup-item list configurable, with the items above enabled by default.
+   - Verify each item name before discarding it.
+   - Return to the Friends screen afterward.
+   - Restore the configured sorting mode.
+   - Resume from the next unprocessed friend.
+13. Stop cleanly when the applicable limits are reached or safe progress is no longer possible.
+
+ACCESSIBILITY AND USER CONTROL
+
+This is an assistive tool for people with motor, dexterity, or other disabilities. Design it accordingly:
+
+- Use Android’s supported AccessibilityService capabilities where appropriate.
+- If Pokémon GO does not expose usable accessibility nodes, evaluate approved on-device techniques such as screenshots obtained through MediaProjection, OCR, and template matching.
+- Keep image processing on the device.
+- Do not require Pokémon GO account credentials.
+- Do not inspect or modify Pokémon GO’s memory, files, or network traffic.
+- Do not use root access, code injection, private game APIs, anti-detection techniques, CAPTCHA bypassing, or security circumvention.
+- Do not attempt to conceal automation.
+- Require a deliberate user action to begin each run.
+- Provide a persistent notification while active.
+- Provide an always-accessible Pause/Stop control.
+- Immediately stop if the user manually takes control.
+- Clearly explain all permissions and why they are needed.
+- Include a first-run tutorial and permission-setup flow.
+- Warn the user that third-party UI automation may be restricted by Pokémon GO’s terms and that they should review the current rules before using it.
+- Make no claim of affiliation with or endorsement by Niantic, Pokémon, Nintendo, or The Pokémon Company.
+
+AUTOMATION ARCHITECTURE
+
+Implement the workflow as an explicit, testable state machine rather than a long sequence of hard-coded delays. Suggested states include:
+
+- IDLE
+- VERIFYING_GAME
+- HOME_SCREEN
+- OPENING_PROFILE
+- OPENING_FRIENDS
+- APPLYING_SORT
+- SCANNING_FRIENDS
+- OPENING_FRIEND
+- OPENING_GIFT
+- HANDLING_GIFT_RESULTS
+- CHECKING_SEND_ELIGIBILITY
+- SENDING_GIFT
+- RETURNING_TO_LIST
+- BAG_FULL_DETECTED
+- OPENING_ITEM_BAG
+- CLEANING_ITEMS
+- RETURNING_TO_FRIENDS
+- PAUSED
+- COMPLETED
+- RECOVERING
+- ERROR
+
+For every interaction:
+
+- Confirm the expected screen before tapping.
+- Prefer accessibility node text, content descriptions, bounds, and state when available.
+- Use OCR or image matching only when accessibility metadata is insufficient.
+- Avoid relying exclusively on fixed screen coordinates.
+- Scale visual targets for different resolutions and display densities.
+- Use configurable timeouts and retry limits.
+- Wait for visual state changes instead of relying only on fixed sleeps.
+- Add conservative delays so the workflow does not generate accidental double taps.
+- Detect loading states, connection errors, unexpected dialogs, and navigation failures.
+- After several failed attempts, pause and clearly tell the user what went wrong.
+- Never tap uncertain destructive controls.
+- Before discarding an item, verify both the recognized item type and the selected quantity.
+- Store only the minimum operational data needed and avoid collecting personal friend information.
+
+APP INTERFACE
+
+Create an accessible Material 3 interface containing:
+
+- Start, Pause, Resume, and Stop controls
+- Current automation state
+- Current action
+- Number of gifts opened
+- Number of gifts sent
+- Number of friends skipped
+- Number of items discarded, grouped by type
+- Sorting preference
+- Sort direction
+- Configurable cleanup-item selection
+- Adjustable interaction delay and timeout settings
+- Dry-run or guided mode that highlights the intended target without tapping it
+- Calibration flow for unsupported screen sizes
+- Diagnostic screen showing recognized screen/state and confidence
+- A local session log with no sensitive account information
+- A clear error message and recovery action
+- Permission setup and troubleshooting instructions
+
+Use large touch targets, strong contrast, readable status messages, TalkBack-friendly labels, logical focus order, reduced-motion support, and controls usable by people with limited dexterity.
+
+RELIABILITY REQUIREMENTS
+
+Account for situations such as:
+
+- A friend has no received gift
+- A gift can be opened but no gift can be sent back
+- The daily open or send limit has been reached
+- The user has no gifts to send
+- A friend already has an unopened gift from the user
+- The friend list changes order after an interaction
+- Friendship-level-up screens appear
+- Postcard pinning prompts appear
+- Stickers are available or unavailable
+- The item bag becomes full
+- The game displays a network error
+- An advertisement, notification, system dialog, or permission prompt appears
+- Pokémon GO is minimized, closed, restarted, or updated
+- OCR confidence is too low
+- The UI language or screen layout does not match the supported configuration
+
+Track processed friends using only session-scoped, non-sensitive visual information. Do not permanently collect trainer names unless absolutely required and approved by the user.
+
+TESTING
+
+Build the automation logic so it can be tested without repeatedly controlling the live game:
+
+- Separate screen recognition, decision logic, and gesture execution.
+- Create unit tests for state transitions and stop conditions.
+- Create fake screen-recognition and gesture-execution implementations.
+- Add tests confirming protected item types can never be discarded.
+- Add tests for bag-full recovery and resuming the friend workflow.
+- Add tests for retries, timeouts, low-confidence recognition, and unexpected dialogs.
+- Provide a screenshot-based test fixture system once I supply screenshots.
+- Add a dry-run mode for validating recognition without performing taps.
+- Run the applicable formatting, lint, unit-test, and build commands.
+
+DELIVERABLES
+
+Produce a working Android Studio project, not merely an example or high-level plan. Include:
+
+- Complete source code
+- Gradle configuration
+- Accessibility service configuration
+- Required manifest entries
+- Permission explanations
+- Compose UI
+- Automation state machine
+- Screen-recognition abstraction
+- Gesture-execution abstraction
+- Settings persistence
+- Tests
+- Setup and calibration instructions
+- README with build, installation, permission, operation, and troubleshooting steps
+- A list of screenshots or recordings still needed for final calibration
+- Clear comments where Pokémon GO-specific visual templates must be supplied
+
+Do not leave core behavior as pseudocode or unexplained TODOs. When exact visual assets are unavailable, implement the surrounding architecture, tests, configuration UI, and resource-import mechanism, then ask me for the specific missing screenshots.
+
+WORKING PROCESS
+
+1. Inspect the repository.
+2. Present a short implementation plan.
+3. List any resources needed from me, naming each exact Pokémon GO screen and state.
+4. Begin implementing all non-blocked portions immediately.
+5. Build and test the project.
+6. Report what is complete, what was verified, and what requires device calibration.
+7. Continue iteratively when I provide screenshots, recordings, or test results.
+
+Treat “Razz Berry” and “Golden Razz Berry” as distinct items. The item referred to as “napnap berry” should be interpreted as “Nanab Berry,” but confirm this with me before finalizing the default cleanup configuration.
