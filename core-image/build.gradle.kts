@@ -6,7 +6,12 @@ plugins {
 android {
     namespace = "com.jacob.pokemonscanner.image"
     compileSdk = 35
-    defaultConfig { minSdk = 26 }
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("screenshots"))
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -20,8 +25,11 @@ kotlin {
 
 dependencies {
     implementation(project(":core-model"))
+    implementation(project(":core-domain"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.mlkit.text.recognition)
     testImplementation(libs.junit)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
 }

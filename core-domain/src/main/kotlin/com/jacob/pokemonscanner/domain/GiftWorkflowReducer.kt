@@ -95,11 +95,11 @@ object GiftWorkflowReducer {
             GameScreen.SEND_LIMIT_DIALOG -> return completed(observed, GiftStopReason.SEND_LIMIT_REACHED)
             GameScreen.NO_GIFTS_DIALOG -> return completed(observed, GiftStopReason.NO_GIFTS_TO_SEND)
             GameScreen.BAG_FULL_DIALOG -> return instruct(
-                observed.copy(state = GiftAutomationState.BAG_FULL_DETECTED),
+                observed.copy(state = GiftAutomationState.OPENING_ITEM_BAG),
                 AutomationAction.OPEN_ITEM_BAG,
                 observation,
                 "Opening the Item Bag from the verified bag-full dialog",
-            ).copy(snapshot = observed.copy(state = GiftAutomationState.OPENING_ITEM_BAG, currentAction = "Opening Item Bag", lastAction = AutomationAction.OPEN_ITEM_BAG, lastTarget = observation.targets[AutomationAction.OPEN_ITEM_BAG]))
+            )
 
             GameScreen.NETWORK_ERROR -> return pause(
                 observed,
@@ -176,7 +176,7 @@ object GiftWorkflowReducer {
             GiftAutomationState.RETURNING_TO_LIST -> returnToList(observed, observation)
             GiftAutomationState.BAG_FULL_DETECTED,
             GiftAutomationState.OPENING_ITEM_BAG,
-            -> openItemBag(observed, observation)
+            -> openItemBag(observed, observation, settings)
             GiftAutomationState.CLEANING_ITEMS -> cleanItems(observed, observation, settings)
             GiftAutomationState.RETURNING_TO_FRIENDS -> returnToFriends(observed, observation)
             GiftAutomationState.IDLE,
@@ -376,6 +376,7 @@ object GiftWorkflowReducer {
     private fun openItemBag(
         state: GiftWorkflowSnapshot,
         observation: ScreenObservation,
+        settings: GiftAssistantSettings,
     ): WorkflowDecision = when (observation.screen) {
         GameScreen.BAG_FULL_DIALOG -> instruct(
             state.copy(state = GiftAutomationState.OPENING_ITEM_BAG),
@@ -383,7 +384,7 @@ object GiftWorkflowReducer {
             observation,
             "Opening Item Bag",
         )
-        GameScreen.ITEM_BAG -> cleanItems(state.copy(state = GiftAutomationState.CLEANING_ITEMS), observation, GiftAssistantSettings())
+        GameScreen.ITEM_BAG -> cleanItems(state.copy(state = GiftAutomationState.CLEANING_ITEMS), observation, settings)
         else -> unsafeScreen(state, "Expected the bag-full dialog or Item Bag")
     }
 
@@ -394,10 +395,12 @@ object GiftWorkflowReducer {
     ): WorkflowDecision = when (observation.screen) {
         GameScreen.ITEM_BAG -> {
             var updated = state
-            if (state.lastAction == AutomationAction.CONFIRM_DISCARD && state.pendingDiscardItem != null && state.pendingDiscardQuantity != null) {
-                val current = state.itemsDiscarded[state.pendingDiscardItem] ?: 0
+            val completedItem = state.pendingDiscardItem
+            val completedQuantity = state.pendingDiscardQuantity
+            if (state.lastAction == AutomationAction.CONFIRM_DISCARD && completedItem != null && completedQuantity != null) {
+                val current = state.itemsDiscarded[completedItem] ?: 0
                 updated = state.copy(
-                    itemsDiscarded = state.itemsDiscarded + (state.pendingDiscardItem to current + state.pendingDiscardQuantity),
+                    itemsDiscarded = state.itemsDiscarded + (completedItem to (current + completedQuantity)),
                     pendingDiscardItem = null,
                     pendingDiscardQuantity = null,
                 )
@@ -423,10 +426,11 @@ object GiftWorkflowReducer {
             }
         }
         GameScreen.DISCARD_CONFIRMATION -> {
-            if (observation.confirmedItem != state.pendingDiscardItem) {
+            val confirmedItem = observation.confirmedItem
+            if (confirmedItem != state.pendingDiscardItem) {
                 unsafeScreen(state, "Discard dialog item does not match the verified selected item")
             } else when (val validation = CleanupPolicy.validate(
-                observation.confirmedItem,
+                confirmedItem,
                 settings.cleanupItems,
                 observation.selectedQuantity,
                 observation.availableQuantity,
@@ -435,11 +439,11 @@ object GiftWorkflowReducer {
                     state.copy(pendingDiscardQuantity = validation.quantity),
                     AutomationAction.CONFIRM_DISCARD,
                     observation,
-                    "Discarding all ${validation.quantity} verified ${observation.confirmedItem.displayName}",
+                    "Discarding all ${validation.quantity} verified ${requireNotNull(confirmedItem).displayName}",
                 )
                 is CleanupValidation.Rejected -> {
-                    if (observation.confirmedItem?.mayEverBeDiscarded == true &&
-                        observation.confirmedItem in settings.cleanupItems &&
+                    if (confirmedItem?.mayEverBeDiscarded == true &&
+                        confirmedItem in settings.cleanupItems &&
                         observation.availableQuantity != null
                     ) {
                         instruct(state, AutomationAction.SELECT_ALL_QUANTITY, observation, "Selecting the full verified item quantity")

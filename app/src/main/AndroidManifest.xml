@@ -7,7 +7,7 @@
     <application
         android:name=".ScannerApplication"
         android:allowBackup="false"
-        android:label="Pokémon Scanner (internal)"
+        android:label="Gift Access Assistant"
         android:supportsRtl="true"
         android:theme="@style/Theme.PokemonScanner">
         <activity

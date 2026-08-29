@@ -14,6 +14,7 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.jacob.pokemonscanner.AutomationControlBridge
 import com.jacob.pokemonscanner.MainActivity
 import com.jacob.pokemonscanner.image.FrameBus
 
@@ -33,7 +34,11 @@ class ScreenCaptureService : Service() {
     @Suppress("DEPRECATION")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP -> stopCapture()
+            ACTION_PAUSE -> AutomationControlBridge.pause()
+            ACTION_STOP -> {
+                AutomationControlBridge.stop()
+                stopCapture(notifyAutomation = false)
+            }
             ACTION_START -> {
                 val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
                 val resultData = intent.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
@@ -55,7 +60,7 @@ class ScreenCaptureService : Service() {
         val mediaProjection = manager.getMediaProjection(resultCode, resultData)
         projection = mediaProjection
         mediaProjection.registerCallback(object : MediaProjection.Callback() {
-            override fun onStop() { stopCapture() }
+            override fun onStop() { stopCapture(notifyAutomation = true) }
         }, null)
 
         val metrics = resources.displayMetrics
@@ -63,7 +68,7 @@ class ScreenCaptureService : Service() {
             imageReader.setOnImageAvailableListener({ source -> publishLatestImage(source) }, null)
         }
         display = mediaProjection.createVirtualDisplay(
-            "pokemon-scanner",
+            "gift-access-assistant",
             metrics.widthPixels,
             metrics.heightPixels,
             metrics.densityDpi,
@@ -97,7 +102,7 @@ class ScreenCaptureService : Service() {
         }
     }
 
-    private fun stopCapture() {
+    private fun stopCapture(notifyAutomation: Boolean) {
         CaptureStatus.setActive(false)
         display?.release()
         display = null
@@ -107,12 +112,13 @@ class ScreenCaptureService : Service() {
         projection = null
         activeProjection?.stop()
         FrameBus.clear()
+        if (notifyAutomation) AutomationControlBridge.captureLost()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
-        if (projection != null) stopCapture()
+        if (projection != null) stopCapture(notifyAutomation = true)
         super.onDestroy()
     }
 
@@ -125,13 +131,18 @@ class ScreenCaptureService : Service() {
             this, 1, Intent(this, ScreenCaptureService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        val pauseIntent = PendingIntent.getService(
+            this, 2, Intent(this, ScreenCaptureService::class.java).setAction(ACTION_PAUSE),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_camera)
-            .setContentTitle("Pokemon scanner is capturing")
-            .setContentText("Automatic scan is active. Tap Stop at any time.")
+            .setContentTitle("Gift Access Assistant is active")
+            .setContentText("Screen recognition is active. Pause or Stop at any time.")
             .setContentIntent(openIntent)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .addAction(0, "Pause", pauseIntent)
             .addAction(0, "Stop", stopIntent)
             .build()
     }
@@ -139,15 +150,16 @@ class ScreenCaptureService : Service() {
     private fun createNotificationChannel() {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Active scanning", NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(CHANNEL_ID, "Active gift assistance", NotificationManager.IMPORTANCE_LOW),
         )
     }
 
     companion object {
-        private const val CHANNEL_ID = "screen-capture"
+        private const val CHANNEL_ID = "gift-assistant-active"
         private const val NOTIFICATION_ID = 1701
         private const val FRAME_INTERVAL_MS = 180L
         private const val ACTION_START = "capture.start"
+        private const val ACTION_PAUSE = "capture.pause"
         private const val ACTION_STOP = "capture.stop"
         private const val EXTRA_RESULT_CODE = "result.code"
         private const val EXTRA_RESULT_DATA = "result.data"

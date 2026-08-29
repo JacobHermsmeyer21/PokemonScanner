@@ -14,7 +14,9 @@ import java.security.MessageDigest
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-class GiftScreenAnalyzer : ScreenRecognitionPort<Bitmap> {
+class GiftScreenAnalyzer(
+    private val calibrationProfile: ImportedCalibrationProfile? = null,
+) : ScreenRecognitionPort<Bitmap> {
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
     override suspend fun recognize(frame: Bitmap): ScreenObservation {
@@ -71,7 +73,13 @@ class GiftScreenAnalyzer : ScreenRecognitionPort<Bitmap> {
     private fun targetsFor(screen: GameScreen, text: Text, bitmap: Bitmap): Map<AutomationAction, RecognitionTarget> {
         val targets = linkedMapOf<AutomationAction, RecognitionTarget>()
         fun fixed(action: AutomationAction, rect: NormalizedRect, label: String, confidence: Float = .86f) {
-            targets[action] = RecognitionTarget(rect, confidence, RecognitionSource.CALIBRATION_PROFILE, label)
+            val calibrated = calibrationProfile?.targets?.get(screen to action)
+            targets[action] = RecognitionTarget(
+                calibrated ?: rect,
+                if (calibrated != null) .98f else confidence,
+                RecognitionSource.CALIBRATION_PROFILE,
+                label,
+            )
         }
         fun fromText(action: AutomationAction, phrase: String, label: String, confidence: Float = .96f) {
             findTextBounds(text, phrase)?.let { rect ->
@@ -119,6 +127,7 @@ class GiftScreenAnalyzer : ScreenRecognitionPort<Bitmap> {
             )
             GameScreen.FRIEND_DETAIL -> {
                 fromText(AutomationAction.SEND_GIFT, "SEND GIFT", "Send Gift")
+                fixed(AutomationAction.BACK, NormalizedRect(.39f, .88f, .61f, .99f), "Close friend detail", .90f)
                 findTextBounds(text, "OPEN")?.let {
                     targets[AutomationAction.OPEN_RECEIVED_GIFT] = RecognitionTarget(
                         it.normalized(bitmap), .94f, RecognitionSource.OCR, "Open received gift",
@@ -165,9 +174,13 @@ class GiftScreenAnalyzer : ScreenRecognitionPort<Bitmap> {
                 (bitmap.width * .94f).toInt(),
                 (bounds.bottom + bitmap.height * .045f).toInt().coerceAtMost(bitmap.height),
             )
-            val hashMaterial = "${row.top}:${row.bottom}:${PerceptualHash.dHash(Bitmap.createBitmap(bitmap, row.left, row.top, row.width(), row.height()).also { crop ->
-                // dHash consumes the pixels synchronously; recycle after the expression below.
-            })}"
+            val crop = Bitmap.createBitmap(bitmap, row.left, row.top, row.width(), row.height())
+            val cropHash = try {
+                PerceptualHash.dHash(crop)
+            } finally {
+                crop.recycle()
+            }
+            val hashMaterial = "${row.top}:${row.bottom}:$cropHash"
             val fingerprint = MessageDigest.getInstance("SHA-256")
                 .digest(hashMaterial.toByteArray())
                 .joinToString("") { "%02x".format(it) }
