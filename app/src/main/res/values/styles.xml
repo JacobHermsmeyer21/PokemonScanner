@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.PokemonScanner" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#00897B</item>
+        <item name="android:navigationBarColor">#0D1B1E</item>
+        <item name="android:statusBarColor">#0D1B1E</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

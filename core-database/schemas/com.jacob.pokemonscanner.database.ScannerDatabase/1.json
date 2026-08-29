@@ -1,0 +1,426 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "69b3c591f96a57ed49126cb78df2afba",
+    "entities": [
+      {
+        "tableName": "pokemon_records",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `speciesName` TEXT NOT NULL, `rawOcrName` TEXT, `nickname` TEXT, `form` TEXT, `cp` INTEGER NOT NULL, `level` REAL, `possibleLevels` TEXT NOT NULL, `attackIv` INTEGER NOT NULL, `defenseIv` INTEGER NOT NULL, `staminaIv` INTEGER NOT NULL, `totalIv` INTEGER NOT NULL, `ivPercentage` REAL NOT NULL, `currentHp` INTEGER, `isShiny` INTEGER, `isFavorite` INTEGER, `scannedAt` INTEGER NOT NULL, `scanSessionId` INTEGER, `detailScreenshotPath` TEXT, `appraisalScreenshotPath` TEXT, `screenshotHash` TEXT, `recordFingerprint` TEXT NOT NULL, `nameConfidence` REAL NOT NULL, `cpConfidence` REAL NOT NULL, `ivConfidence` REAL NOT NULL, `levelConfidence` REAL NOT NULL, `manuallyEdited` INTEGER NOT NULL, `verified` INTEGER NOT NULL, `notes` TEXT NOT NULL, `detectorVersion` TEXT NOT NULL, `speciesDataVersion` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speciesName",
+            "columnName": "speciesName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawOcrName",
+            "columnName": "rawOcrName",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "nickname",
+            "columnName": "nickname",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "form",
+            "columnName": "form",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cp",
+            "columnName": "cp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "level",
+            "columnName": "level",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "possibleLevels",
+            "columnName": "possibleLevels",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attackIv",
+            "columnName": "attackIv",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "defenseIv",
+            "columnName": "defenseIv",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "staminaIv",
+            "columnName": "staminaIv",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalIv",
+            "columnName": "totalIv",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ivPercentage",
+            "columnName": "ivPercentage",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentHp",
+            "columnName": "currentHp",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "isShiny",
+            "columnName": "isShiny",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "isFavorite",
+            "columnName": "isFavorite",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "scannedAt",
+            "columnName": "scannedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scanSessionId",
+            "columnName": "scanSessionId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "detailScreenshotPath",
+            "columnName": "detailScreenshotPath",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "appraisalScreenshotPath",
+            "columnName": "appraisalScreenshotPath",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "screenshotHash",
+            "columnName": "screenshotHash",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "recordFingerprint",
+            "columnName": "recordFingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameConfidence",
+            "columnName": "nameConfidence",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cpConfidence",
+            "columnName": "cpConfidence",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ivConfidence",
+            "columnName": "ivConfidence",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "levelConfidence",
+            "columnName": "levelConfidence",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "manuallyEdited",
+            "columnName": "manuallyEdited",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verified",
+            "columnName": "verified",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detectorVersion",
+            "columnName": "detectorVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speciesDataVersion",
+            "columnName": "speciesDataVersion",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_pokemon_records_speciesName",
+            "unique": false,
+            "columnNames": [
+              "speciesName"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pokemon_records_speciesName` ON `${TABLE_NAME}` (`speciesName`)"
+          },
+          {
+            "name": "index_pokemon_records_nickname",
+            "unique": false,
+            "columnNames": [
+              "nickname"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pokemon_records_nickname` ON `${TABLE_NAME}` (`nickname`)"
+          },
+          {
+            "name": "index_pokemon_records_cp",
+            "unique": false,
+            "columnNames": [
+              "cp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pokemon_records_cp` ON `${TABLE_NAME}` (`cp`)"
+          },
+          {
+            "name": "index_pokemon_records_ivPercentage",
+            "unique": false,
+            "columnNames": [
+              "ivPercentage"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pokemon_records_ivPercentage` ON `${TABLE_NAME}` (`ivPercentage`)"
+          },
+          {
+            "name": "index_pokemon_records_scanSessionId",
+            "unique": false,
+            "columnNames": [
+              "scanSessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pokemon_records_scanSessionId` ON `${TABLE_NAME}` (`scanSessionId`)"
+          },
+          {
+            "name": "index_pokemon_records_recordFingerprint",
+            "unique": false,
+            "columnNames": [
+              "recordFingerprint"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pokemon_records_recordFingerprint` ON `${TABLE_NAME}` (`recordFingerprint`)"
+          },
+          {
+            "name": "index_pokemon_records_scannedAt",
+            "unique": false,
+            "columnNames": [
+              "scannedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pokemon_records_scannedAt` ON `${TABLE_NAME}` (`scannedAt`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "scan_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `startedAt` INTEGER NOT NULL, `endedAt` INTEGER, `mode` TEXT NOT NULL, `totalScanned` INTEGER NOT NULL, `duplicatesSkipped` INTEGER NOT NULL, `failures` INTEGER NOT NULL, `stopReason` TEXT, `deviceProfile` TEXT NOT NULL, `appVersion` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "endedAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "mode",
+            "columnName": "mode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalScanned",
+            "columnName": "totalScanned",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "duplicatesSkipped",
+            "columnName": "duplicatesSkipped",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "failures",
+            "columnName": "failures",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stopReason",
+            "columnName": "stopReason",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "deviceProfile",
+            "columnName": "deviceProfile",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appVersion",
+            "columnName": "appVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "species_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`speciesName` TEXT NOT NULL, `form` TEXT NOT NULL, `pokedexNumber` INTEGER NOT NULL, `baseAttack` INTEGER NOT NULL, `baseDefense` INTEGER NOT NULL, `baseStamina` INTEGER NOT NULL, `aliases` TEXT NOT NULL, `version` TEXT NOT NULL, PRIMARY KEY(`speciesName`, `form`, `version`))",
+        "fields": [
+          {
+            "fieldPath": "speciesName",
+            "columnName": "speciesName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "form",
+            "columnName": "form",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pokedexNumber",
+            "columnName": "pokedexNumber",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baseAttack",
+            "columnName": "baseAttack",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baseDefense",
+            "columnName": "baseDefense",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baseStamina",
+            "columnName": "baseStamina",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "aliases",
+            "columnName": "aliases",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "speciesName",
+            "form",
+            "version"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_species_data_pokedexNumber",
+            "unique": false,
+            "columnNames": [
+              "pokedexNumber"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_species_data_pokedexNumber` ON `${TABLE_NAME}` (`pokedexNumber`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '69b3c591f96a57ed49126cb78df2afba')"
+    ]
+  }
+}

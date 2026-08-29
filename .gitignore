@@ -1,0 +1,16 @@
+.gradle/
+.gradle-bootstrap/
+.android-sdk/
+.android-sdk-unpack/
+.jdk/
+gradle-8.9-bin.zip
+android-commandline-tools.zip
+jdk-17.zip
+.idea/
+.agents/
+automation-debug/
+**/build/
+local.properties
+*.iml
+captures/
+exports/

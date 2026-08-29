@@ -1,0 +1,509 @@
+Act as a senior Android engineer, computer-vision engineer, and software architect. Design and implement an Android application that scans Pokémon displayed inside Pokémon GO, extracts their information, stores the results in a local database, and provides tools to search, filter, edit, export, and manage the collected records.
+
+The application is for personal research and inventory management. Before implementing automation, clearly identify any Android, Google Play, accessibility, privacy, or Pokémon GO terms-of-service concerns. Design the project so that the core scanning and database features work without unattended game automation. Keep any automatic swipe functionality isolated behind a clearly labeled experimental/debug-only module.
+
+## Primary goal
+
+The app should inspect a Pokémon detail screen in Pokémon GO and collect:
+
+- Pokémon species name
+- Nickname, when present
+- Combat Power, or CP
+- Pokémon level
+- Attack IV from 0 to 15
+- Defense IV from 0 to 15
+- Stamina/HP IV from 0 to 15
+- Total IV percentage
+- Current HP, when visible
+- Form or regional form, when detectable
+- Shiny status, when detectable
+- Favorite status, when detectable
+- Scan timestamp
+- A screenshot or cropped image reference, optionally
+- A confidence score for each detected field
+
+After scanning, the app should store the result in a Room database.
+
+The desired workflow is:
+
+1. The user opens a Pokémon in Pokémon GO.
+2. The Android app captures the screen using MediaProjection.
+3. The app waits until the screen is stable.
+4. It detects the Pokémon detail screen.
+5. It reads the Pokémon name and CP.
+6. It opens or reads the appraisal screen when available.
+7. It detects the Attack, Defense, and HP IV bars.
+8. It calculates the Pokémon’s level using species base stats, CP multipliers, CP, and IV values.
+9. It validates the result.
+10. It saves the Pokémon to the database.
+11. In experimental automatic mode, it swipes to the next Pokémon.
+12. It repeats until all Pokémon have been processed.
+13. It stops automatically when it determines that the end has been reached or when repeated scans indicate that it is no longer advancing.
+
+## Important design constraint
+
+Build two operating modes.
+
+### Mode 1: User-assisted scanning
+
+This should be the primary and safest mode.
+
+The user manually navigates Pokémon GO and presses a floating Scan button. The app captures, analyzes, and stores the current Pokémon. The user then manually moves to the next Pokémon.
+
+This mode must not require an accessibility service.
+
+### Mode 2: Experimental automatic scanning
+
+This mode may use an Android AccessibilityService to perform gestures such as:
+
+- Opening appraisal
+- Closing appraisal
+- Swiping to the next Pokémon
+- Waiting for the next screen to stabilize
+- Stopping when scanning is complete
+
+Keep this feature separate from the main scanner, disabled by default, and clearly marked as experimental and potentially incompatible with Pokémon GO or Google Play policies.
+
+Do not use network interception, game memory access, packet inspection, root access, code injection, account credentials, reverse engineering of private APIs, or modification of Pokémon GO.
+
+## Technical requirements
+
+Use:
+
+- Kotlin
+- Jetpack Compose
+- MVVM or clean architecture
+- Room database
+- Coroutines
+- Flow or StateFlow
+- Hilt for dependency injection
+- MediaProjection for screen capture
+- Foreground service for an active scanning session
+- ML Kit OCR or another Android-compatible OCR solution
+- OpenCV or equivalent image-processing techniques for IV-bar and icon detection
+- DataStore for preferences
+- WorkManager only where appropriate for deferred noninteractive work
+
+Use a multi-module structure when practical, such as:
+
+- app
+- core-model
+- core-database
+- core-image
+- core-domain
+- feature-scanner
+- feature-inventory
+- feature-settings
+- automation-debug
+
+## Required architecture
+
+Create a scanning state machine with states similar to:
+
+- Idle
+- RequestingPermission
+- WaitingForScreen
+- WaitingForStableFrame
+- DetectingScreenType
+- ReadingPokemonDetails
+- OpeningAppraisal
+- WaitingForAppraisal
+- ReadingAppraisal
+- ValidatingResult
+- SavingPokemon
+- MovingToNextPokemon
+- Finished
+- Paused
+- Error
+
+The scanner must not run OCR on every frame. It should:
+
+1. Downscale frames.
+2. Compare consecutive frames.
+3. Use structural similarity, perceptual hashing, or pixel-difference thresholds.
+4. Process only after the screen has remained stable for a configured duration.
+
+## Image-processing requirements
+
+Design the system to support multiple screen sizes, display densities, and aspect ratios.
+
+Do not rely only on fixed pixel coordinates. Use one or more of:
+
+- Normalized coordinates
+- Anchor-based detection
+- Template matching
+- Feature matching
+- Device-specific calibration profiles
+- Dynamic region detection
+
+Create separate detectors for:
+
+- Pokémon detail-screen recognition
+- Name region
+- CP region
+- HP region
+- Favorite icon
+- Shiny icon or visual marker
+- Appraisal overlay
+- Attack IV bar
+- Defense IV bar
+- HP IV bar
+- Appraisal badge or total-rating indicator
+- Buttons required for navigation
+
+For OCR:
+
+- Normalize contrast.
+- Remove unnecessary background areas.
+- Support common OCR mistakes.
+- Use Pokémon-name fuzzy matching against a local species list.
+- Return confidence values.
+- Preserve the original OCR result for debugging.
+
+For IV-bar detection:
+
+- Crop each bar.
+- Detect the filled portion.
+- Map the fill length to an integer from 0 to 15.
+- Account for anti-aliasing, animation, scaling, and partial segments.
+- Validate detected values against the appraisal badge or IV percentage where possible.
+
+## Pokémon level calculation
+
+Pokémon level is not directly displayed. Implement a level-calculation engine.
+
+Inputs:
+
+- Species
+- Form
+- CP
+- Attack IV
+- Defense IV
+- Stamina IV
+- Species base Attack
+- Species base Defense
+- Species base Stamina
+- CP multiplier table
+
+Evaluate supported half-level increments and calculate CP using the Pokémon GO CP formula.
+
+Return:
+
+- Exact level when uniquely determined
+- A list of possible levels when ambiguous
+- A confidence value
+- A validation error when no level matches
+
+Keep species data and CP multiplier data in local versioned JSON assets or database tables. Design an update mechanism so game-data tables can be replaced later.
+
+## Database requirements
+
+Create Room entities and DAOs for:
+
+### PokemonRecord
+
+Include at least:
+
+- id
+- speciesName
+- nickname
+- form
+- cp
+- level
+- possibleLevels
+- attackIv
+- defenseIv
+- staminaIv
+- totalIv
+- ivPercentage
+- currentHp
+- isShiny
+- isFavorite
+- scannedAt
+- scanSessionId
+- detailScreenshotPath
+- appraisalScreenshotPath
+- screenshotHash
+- recordFingerprint
+- nameConfidence
+- cpConfidence
+- ivConfidence
+- levelConfidence
+- manuallyEdited
+- notes
+
+### ScanSession
+
+Include:
+
+- id
+- startedAt
+- endedAt
+- mode
+- totalScanned
+- duplicatesSkipped
+- failures
+- stopReason
+- deviceProfile
+- appVersion
+
+### SpeciesData
+
+Include:
+
+- species name
+- form
+- Pokédex number
+- base Attack
+- base Defense
+- base Stamina
+- aliases or OCR variants
+- version
+
+Create queries for:
+
+- All Pokémon
+- Search by species or nickname
+- Filter by IV percentage
+- Filter by CP
+- Filter by level
+- Filter by Attack, Defense, or Stamina IV
+- Filter shiny Pokémon
+- Filter favorites
+- Filter by scan session
+- Sort by any major field
+- Find likely duplicate records
+- Delete, edit, and bulk-select records
+
+## Duplicate and stop detection
+
+Do not assume that two Pokémon with the same species, CP, and IVs are necessarily the same Pokémon.
+
+Build a fingerprint using a combination of:
+
+- Species
+- CP
+- IVs
+- Level
+- Favorite status
+- Visible nickname
+- Perceptual hash of sprite or screen region
+- Previous and next scan sequence context
+- Session position
+
+Experimental automatic scanning should stop when one or more of these conditions occur:
+
+- The first sequence of Pokémon fingerprints repeats.
+- The same Pokémon is detected repeatedly after several swipe attempts.
+- The Pokémon screen is no longer detected.
+- A configured maximum scan count is reached.
+- Screen capture permission ends.
+- Pokémon GO leaves the expected screen.
+- The user presses Stop.
+- An unrecoverable recognition error occurs.
+- The accessibility service cannot advance.
+- The screen sequence begins repeating.
+
+Use conservative stop logic to avoid infinite loops.
+
+## User interface requirements
+
+Create these Compose screens:
+
+### Home screen
+
+- Start assisted scan
+- Start experimental automatic scan
+- Resume paused session
+- View inventory
+- View previous scan sessions
+- Settings
+- Diagnostics
+
+### Scanner overlay or scanner screen
+
+- Current scanner state
+- Pokémon currently detected
+- Extracted values
+- Confidence indicators
+- Scan count
+- Pause
+- Stop
+- Rescan
+- Save manually
+- Correct detected values
+- Thumbnail preview of captured regions
+
+### Inventory screen
+
+- Search
+- Sort
+- Filter
+- Multi-select
+- Edit
+- Delete
+- Export
+- View details
+
+### Pokémon detail screen
+
+- All stored values
+- Edit fields
+- View original captured regions
+- Re-run OCR
+- Re-run IV detection
+- Recalculate level
+- Add notes
+- Mark as verified
+
+### Session history screen
+
+- Date
+- Duration
+- Mode
+- Number scanned
+- Number failed
+- Stop reason
+- Export session
+
+### Diagnostics screen
+
+- Current screen dimensions
+- Calibration values
+- Detected anchors
+- OCR crops
+- IV-bar crops
+- Perceptual hashes
+- Detector confidence
+- Last scanner error
+- Option to save debugging images
+
+## Export requirements
+
+Support:
+
+- CSV
+- JSON
+- Android share sheet
+- Export all records
+- Export selected records
+- Export one session
+- Include or exclude screenshot paths
+- Stable, documented field names
+
+## Error handling
+
+Handle:
+
+- MediaProjection denied
+- MediaProjection revoked
+- Foreground service stopped
+- Pokémon screen not found
+- Appraisal screen not found
+- OCR failure
+- Unknown Pokémon name
+- CP not detected
+- IV bars unreadable
+- Ambiguous level
+- Database failure
+- Duplicate record warning
+- Accessibility service disabled
+- Swipe failed
+- Screen did not change
+- Unexpected navigation
+- App moved to background
+
+Every error should produce:
+
+- A user-friendly explanation
+- A developer/debug error code
+- A recoverable next action when possible
+
+## Testing requirements
+
+Provide:
+
+- Unit tests for the CP and level formula
+- Unit tests for fuzzy Pokémon-name matching
+- Unit tests for duplicate fingerprint logic
+- Unit tests for scan-state transitions
+- Room DAO tests
+- Image-processing tests using sample screenshots
+- Instrumentation tests for permission flows
+- Compose UI tests
+- Fake screen-capture source for development
+- Fake accessibility gesture controller
+- A replay mode that processes prerecorded screenshots without opening Pokémon GO
+
+Build a test dataset structure for:
+
+- Different phone resolutions
+- Different Android display scales
+- Light and dark environmental conditions
+- Multiple Pokémon species
+- Regional forms
+- Nicknames
+- Shiny Pokémon
+- 0, 1, 2, 3, and 4-star appraisals
+- IV values near segment boundaries
+- Duplicate-looking Pokémon
+- Failed or partial appraisals
+
+## Privacy and security
+
+- Process screenshots locally.
+- Do not upload images unless the user explicitly enables a future cloud feature.
+- Do not collect Pokémon GO credentials.
+- Do not log personal notifications or unrelated screen content.
+- Crop frames as early as possible.
+- Delete temporary full-screen captures after processing when configured.
+- Explain MediaProjection permission clearly.
+- Add a visible indicator while capture is active.
+- Allow the user to delete all stored data and screenshots.
+
+## Deliverables
+
+Produce the work in this order.
+
+1. Feasibility and policy-risk assessment
+2. Recommended architecture
+3. Project folder and module structure
+4. Gradle dependencies
+5. Complete Room schema
+6. Core domain models
+7. Scanner state machine
+8. MediaProjection capture implementation
+9. Stable-frame detector
+10. OCR pipeline
+11. IV-bar detection algorithm
+12. Pokémon name normalization
+13. Level-calculation engine
+14. Duplicate and stop-detection logic
+15. User-assisted scanning workflow
+16. Experimental accessibility automation module
+17. Compose UI
+18. Export system
+19. Error handling
+20. Unit and instrumentation tests
+21. Setup and build instructions
+22. Known limitations
+23. Future improvements
+
+Do not respond with only a broad plan. Generate concrete Kotlin code, interfaces, Room entities, DAOs, repositories, ViewModels, Compose screens, services, state classes, tests, and configuration.
+
+When the entire application is too large for one response, begin with a fully compilable minimum viable project and continue feature-by-feature. Clearly label files with their full paths. Avoid pseudocode unless a platform limitation makes working code impossible.
+
+The minimum viable version should first support:
+
+1. Importing a Pokémon appraisal screenshot
+2. Detecting the Pokémon name
+3. Detecting CP
+4. Detecting the three IV values
+5. Calculating IV percentage
+6. Calculating possible Pokémon levels
+7. Saving the result to Room
+8. Viewing, editing, filtering, and exporting records
+
+After that works, add MediaProjection live scanning. Add automatic gesture control only after the user-assisted workflow is complete and tested.
+
+Prefer robust, maintainable, testable code over a quick proof of concept.
