@@ -1,0 +1,4 @@
+<resources>
+    <string name="automation_service_label">Gift Access Assistant</string>
+    <string name="automation_service_description">An accessibility tool that helps people with disabilities manage Pokémon GO gifts after each deliberate Start. It can read supported labels, perform gestures, show guided targets, and pause on manual touch.</string>
+</resources>

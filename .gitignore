@@ -8,7 +8,6 @@ android-commandline-tools.zip
 jdk-17.zip
 .idea/
 .agents/
-automation-debug/
 **/build/
 local.properties
 *.iml
